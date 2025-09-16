@@ -9,6 +9,7 @@ import (
 	"github.com/strowk/foxy-contexts/pkg/fxctx"
 	"github.com/strowk/foxy-contexts/pkg/mcp"
 	"github.com/strowk/foxy-contexts/pkg/toolinput"
+	"github.com/strowk/mcp-k8s-go/internal/config"
 	"github.com/strowk/mcp-k8s-go/internal/content"
 	"github.com/strowk/mcp-k8s-go/internal/k8s"
 	"github.com/strowk/mcp-k8s-go/internal/utils"
@@ -97,6 +98,11 @@ func NewGetResourceTool(pool k8s.ClientPool) fxctx.Tool {
 				}
 			}
 
+			if config.GlobalOptions.MaskSecrets && kind == "Secret" && group == "" && version == "v1" {
+				maskSecrets(object, "data")
+				maskSecrets(object, "stringData")
+			}
+
 			var cnt any
 			if templateStr != "" {
 				tmpl, err := template.New("template").Parse(templateStr)
@@ -128,4 +134,14 @@ func NewGetResourceTool(pool k8s.ClientPool) fxctx.Tool {
 			}
 		},
 	)
+}
+
+func maskSecrets(object map[string]interface{}, key string) {
+	if data, ok := object[key]; ok {
+		if dataMap, ok := data.(map[string]any); ok {
+			for key := range dataMap {
+				dataMap[key] = "********"
+			}
+		}
+	}
 }
